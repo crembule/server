@@ -1107,7 +1107,7 @@ class ShareByMailProvider implements IShareProvider {
 			));
 		$cursor = $qb->executeQuery();
 
-		$mail = array();
+		$mail = [];
 		while ($row = $cursor->fetch()) {
 			if ($currentAccess === false) {
 				$mail[] = $row['share_with'];
