@@ -1107,6 +1107,7 @@ class ShareByMailProvider implements IShareProvider {
 			));
 		$cursor = $qb->executeQuery();
 
+		$public = $cursor->rowCount() > 0;
 		$mail = [];
 		while ($row = $cursor->fetch()) {
 			if ($currentAccess === false) {
@@ -1120,7 +1121,7 @@ class ShareByMailProvider implements IShareProvider {
 		}
 		$cursor->closeCursor();
 
-		return ['public' => $mail];
+		return ['public' => $public, 'mail' => $mail];
 	}
 
 	public function getAllShares(): iterable {
