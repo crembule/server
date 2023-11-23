@@ -246,6 +246,14 @@ class RepairMimeTypes implements IRepairStep {
 		return $this->updateMimetypes($updatedMimetypes);
 	}
 
+	private function introduceReStructuredTextFormatType() {
+		$updatedMimetypes = [
+			'rst' => 'text/x-rst',
+		];
+
+		return $this->updateMimetypes($updatedMimetypes);
+	}
+
 	/**
 	 * Fix mime types
 	 */
@@ -309,6 +317,10 @@ class RepairMimeTypes implements IRepairStep {
 
 		if (version_compare($ocVersionFromBeforeUpdate, '29.0.0.2', '<') && $this->introduceEmlAndMsgFormatType()) {
 			$out->info('Fixed eml and msg mime type');
+		}
+
+		if (version_compare($ocVersionFromBeforeUpdate, '29.0.0.6', '<') && $this->introduceReStructuredTextFormatType()) {
+			$out->info('Fixed ReStructured Text mime type');
 		}
 	}
 }
