@@ -219,8 +219,9 @@ class AppConfig implements IAppConfig {
 		// if we want to filter values, we need to get sensitivity
 		$this->loadConfigAll();
 		// array_merge() will remove numeric keys (here config keys), so addition arrays instead
+		$values = $this->formatAppValues($app, ($this->fastCache[$app] ?? []) + ($this->lazyCache[$app] ?? []));
 		$values = array_filter(
-			(($this->fastCache[$app] ?? []) + ($this->lazyCache[$app] ?? [])),
+			$values,
 			function (string $key) use ($prefix): bool {
 				return str_starts_with($key, $prefix); // filter values based on $prefix
 			}, ARRAY_FILTER_USE_KEY
@@ -271,7 +272,8 @@ class AppConfig implements IAppConfig {
 
 		foreach (array_keys($cache) as $app) {
 			if (isset($cache[$app][$key])) {
-				$values[$app] = $cache[$app][$key];
+				$appCache = $this->formatAppValues((string)$app, $cache[$app]);
+				$values[$app] = $appCache[$key];
 			}
 		}
 
@@ -1384,6 +1386,38 @@ class AppConfig implements IAppConfig {
 	 */
 	public function getFilteredValues($app) {
 		return $this->getAllValues($app, filtered: true);
+	}
+
+
+	/**
+	 * @param string $app
+	 * @param array $values
+	 *
+	 * @return array
+	 */
+	private function formatAppValues(string $app, array $values): array {
+		foreach($values as $key => $value) {
+			switch ($this->getValueType($app, $key)) {
+				case self::VALUE_INT:
+					$values[$key] = (int)$value;
+					break;
+				case self::VALUE_FLOAT:
+					$values[$key] = (float)$value;
+					break;
+				case self::VALUE_BOOL:
+					$values[$key] = in_array(strtolower($value), ['1', 'true', 'yes', 'on']);
+					break;
+				case self::VALUE_ARRAY:
+					try {
+						$values[$key] = json_decode($value, true, flags: JSON_THROW_ON_ERROR);
+					} catch (JsonException $e) {
+						// ignoreable
+					}
+					break;
+			}
+		}
+
+		return $values;
 	}
 
 	/**
