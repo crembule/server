@@ -25,6 +25,7 @@ namespace OC\AppFramework\Middleware\Security;
 
 use OC\AppFramework\Middleware\Security\Exceptions\NotConfirmedException;
 use OC\AppFramework\Utility\ControllerMethodReflector;
+use OC\Authentication\Token\IProvider;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\PasswordConfirmationRequired;
 use OCP\AppFramework\Middleware;
@@ -45,6 +46,7 @@ class PasswordConfirmationMiddleware extends Middleware {
 	private $timeFactory;
 	/** @var array */
 	private $excludedUserBackEnds = ['user_saml' => true, 'user_globalsiteselector' => true];
+	private IProvider $tokenProvider;
 
 	/**
 	 * PasswordConfirmationMiddleware constructor.
@@ -57,11 +59,14 @@ class PasswordConfirmationMiddleware extends Middleware {
 	public function __construct(ControllerMethodReflector $reflector,
 		ISession $session,
 		IUserSession $userSession,
-		ITimeFactory $timeFactory) {
+		ITimeFactory $timeFactory,
+		IProvider $tokenProvider
+	) {
 		$this->reflector = $reflector;
 		$this->session = $session;
 		$this->userSession = $userSession;
 		$this->timeFactory = $timeFactory;
+		$this->tokenProvider = $tokenProvider;
 	}
 
 	/**
@@ -86,8 +91,16 @@ class PasswordConfirmationMiddleware extends Middleware {
 				$backendClassName = $user->getBackendClassName();
 			}
 
+			$sessionId = $this->session->getId();
+			$token = $this->tokenProvider->getToken($sessionId);
+			$scope = $token->getScopeAsArray();
+			if (isset($scope['sso-based-login']) && $scope['sso-based-login'] === true) {
+				// Users logging in from SSO backends cannot confirm their password by design
+				return;
+			}
+
 			$lastConfirm = (int) $this->session->get('last-password-confirm');
-			// we can't check the password against a SAML backend, so skip password confirmation in this case
+			// TODO: confirm excludedUserBackEnds can go away and remove it
 			if (!isset($this->excludedUserBackEnds[$backendClassName]) && $lastConfirm < ($this->timeFactory->getTime() - (30 * 60 + 15))) { // allow 15 seconds delay
 				throw new NotConfirmedException();
 			}
