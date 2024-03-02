@@ -213,19 +213,19 @@ class BackgroundJobTest extends TestCase {
 			$job->expects($this->never())
 				->method('clearErrorNotifications');
 
-			$this->config->expects($this->once())
-				->method('getAppValue')
-				->willReturn($errorDays);
-			$this->config->expects($this->once())
-				->method('setAppValue')
-				->with('updatenotification', 'update_check_errors', $errorDays + 1);
+			$this->appConfig->expects($this->once())
+				->method('getAppValueInt')
+				->willReturn($errorDays ?? 0);
+			$this->appConfig->expects($this->once())
+				->method('setAppValueInt')
+				->with('update_check_errors', $errorDays + 1);
 			$job->expects($errorDays !== null ? $this->once() : $this->never())
 				->method('sendErrorNotifications')
 				->with($errorDays + 1);
 		} else {
-			$this->config->expects($this->once())
-				->method('setAppValue')
-				->with('updatenotification', 'update_check_errors', 0);
+			$this->appConfig->expects($this->once())
+				->method('setAppValueInt')
+				->with('update_check_errors', 0);
 			$job->expects($this->once())
 				->method('clearErrorNotifications');
 			$job->expects($this->once())
@@ -304,15 +304,15 @@ class BackgroundJobTest extends TestCase {
 			'getUsersToNotify',
 		]);
 
-		$this->config->expects($this->once())
-			->method('getAppValue')
-			->with('updatenotification', $app, false)
-			->willReturn($lastNotification);
+		$this->appConfig->expects($this->once())
+			->method('getAppValueString')
+			->with($app, '')
+			->willReturn($lastNotification === false ? '' : $lastNotification);
 
 		if ($lastNotification !== $version) {
-			$this->config->expects($this->once())
-				->method('setAppValue')
-				->with('updatenotification', $app, $version);
+			$this->appConfig->expects($this->once())
+				->method('setAppValueString')
+				->with($app, $version);
 		}
 
 		if ($callDelete === false) {
@@ -374,8 +374,16 @@ class BackgroundJobTest extends TestCase {
 
 	public function dataGetUsersToNotify(): array {
 		return [
-			[['g1', 'g2'], ['g1' => null, 'g2' => ['u1', 'u2']], ['u1', 'u2']],
-			[['g3', 'g4'], ['g3' => ['u1', 'u2'], 'g4' => ['u2', 'u3']], ['u1', 'u2', 'u3']],
+			[
+				['g1', 'g2'],
+				['g1' => null, 'g2' => ['u1', 'u2']],
+				['u1', 'u2']
+			],
+			[
+				['g3', 'g4'],
+				['g3' => ['u1', 'u2'], 'g4' => ['u2', 'u3']],
+				['u1', 'u2', 'u3']
+			],
 		];
 	}
 
@@ -388,10 +396,10 @@ class BackgroundJobTest extends TestCase {
 	public function testGetUsersToNotify(array $groups, array $groupUsers, array $expected) {
 		$job = $this->getJob();
 
-		$this->config->expects($this->once())
-			->method('getAppValue')
-			->with('updatenotification', 'notify_groups', '["admin"]')
-			->willReturn(json_encode($groups));
+		$this->appConfig->expects($this->once())
+			->method('getAppValueArray')
+			->with('notify_groups', ['admin'])
+			->willReturn($groups);
 
 		$groupMap = [];
 		foreach ($groupUsers as $gid => $uids) {
