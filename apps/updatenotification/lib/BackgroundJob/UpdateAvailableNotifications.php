@@ -171,7 +171,7 @@ class UpdateAvailableNotifications extends TimedJob {
 			return;
 		}
 
-		if ($lastNotification !== false) {
+		if ($lastNotification !== '') {
 			// Delete old updates
 			$this->deleteOutdatedNotifications($app, $lastNotification);
 		}
@@ -213,7 +213,7 @@ class UpdateAvailableNotifications extends TimedJob {
 			$groupToNotify = $this->groupManager->get($group);
 			if ($groupToNotify instanceof IGroup) {
 				foreach ($groupToNotify->getUsers() as $user) {
-					$this->users[$user->getUID()] = true;
+					$this->users[] = $user->getUID();
 				}
 			}
 		}
