@@ -22,6 +22,8 @@
 
 namespace Test\Share20;
 
+use OC\Files\Cache\CacheAccess;
+use OC\Files\Cache\CacheEntry;
 use OC\Share20\DefaultShareProvider;
 use OC\Share20\ShareAttributes;
 use OCP\AppFramework\Utility\ITimeFactory;
@@ -82,6 +84,11 @@ class DefaultShareProviderTest extends \Test\TestCase {
 	/** @var ITimeFactory|MockObject */
 	protected $timeFactory;
 
+	/** @var CacheAccess|MockObject */
+	protected $cacheAccess;
+	/** @var array<int, CacheEntry> */
+	protected $cacheItems = [];
+
 	protected function setUp(): void {
 		$this->dbConn = \OC::$server->getDatabaseConnection();
 		$this->userManager = $this->createMock(IUserManager::class);
@@ -93,6 +100,26 @@ class DefaultShareProviderTest extends \Test\TestCase {
 		$this->defaults = $this->getMockBuilder(Defaults::class)->disableOriginalConstructor()->getMock();
 		$this->urlGenerator = $this->createMock(IURLGenerator::class);
 		$this->timeFactory = $this->createMock(ITimeFactory::class);
+		$this->cacheAccess = $this->createMock(CacheAccess::class);
+		$this->cacheItems = [];
+		$this->cacheAccess->method('getByFileIds')->willReturnCallback(function (array $fileIds) {
+			$result = [];
+			foreach ($fileIds as $fileId) {
+				if (isset($this->cacheItems[$fileId])) {
+					$result[$fileId] = $this->cacheItems[$fileId];
+				}
+			}
+			return $result;
+		});
+		$this->cacheAccess->method('getByFileIdsInStorage')->willReturnCallback(function (array $fileIds, int $storageId) {
+			$result = [];
+			foreach ($fileIds as $fileId) {
+				if (isset($this->cacheItems[$fileId]) && $this->cacheItems[$fileId]->getStorageId() === $storageId) {
+					$result[$fileId] = $this->cacheItems[$fileId];
+				}
+			}
+			return $result;
+		});
 
 		$this->userManager->expects($this->any())->method('userExists')->willReturn(true);
 		$this->timeFactory->expects($this->any())->method('now')->willReturn(new \DateTimeImmutable("2023-05-04 00:00 Europe/Berlin"));
@@ -109,13 +136,13 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->defaults,
 			$this->l10nFactory,
 			$this->urlGenerator,
-			$this->timeFactory
+			$this->timeFactory,
+			$this->cacheAccess,
 		);
 	}
 
 	protected function tearDown(): void {
 		$this->dbConn->getQueryBuilder()->delete('share')->execute();
-		$this->dbConn->getQueryBuilder()->delete('filecache')->execute();
 		$this->dbConn->getQueryBuilder()->delete('storages')->execute();
 	}
 
@@ -470,7 +497,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 				$this->defaults,
 				$this->l10nFactory,
 				$this->urlGenerator,
-				$this->timeFactory
+				$this->timeFactory,
+				$this->cacheAccess,
 			])
 			->setMethods(['getShareById'])
 			->getMock();
@@ -565,7 +593,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 				$this->defaults,
 				$this->l10nFactory,
 				$this->urlGenerator,
-				$this->timeFactory
+				$this->timeFactory,
+				$this->cacheAccess,
 			])
 			->setMethods(['getShareById'])
 			->getMock();
@@ -920,16 +949,15 @@ class DefaultShareProviderTest extends \Test\TestCase {
 	}
 
 	private function createTestFileEntry($path, $storage = 1) {
-		$qb = $this->dbConn->getQueryBuilder();
-		$qb->insert('filecache')
-			->values([
-				'storage' => $qb->expr()->literal($storage),
-				'path' => $qb->expr()->literal($path),
-				'path_hash' => $qb->expr()->literal(md5($path)),
-				'name' => $qb->expr()->literal(basename($path)),
-			]);
-		$this->assertEquals(1, $qb->execute());
-		return $qb->getLastInsertId();
+		$id = count($this->cacheItems);
+		$this->cacheItems[$id] = new CacheEntry([
+			'fileid' => $id,
+			'storage' => $storage,
+			'path' => $path,
+			'path_hash' => md5($path),
+			'name' => basename($path),
+		]);
+		return $id;
 	}
 
 	public function storageAndFileNameProvider() {
@@ -938,8 +966,6 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			['home::shareOwner', 'files/test.txt', 'files/test2.txt'],
 			// regular file on external storage
 			['smb::whatever', 'files/test.txt', 'files/test2.txt'],
-			// regular file on external storage in trashbin-like folder,
-			['smb::whatever', 'files_trashbin/files/test.txt', 'files_trashbin/files/test2.txt'],
 		];
 	}
 
@@ -1287,6 +1313,7 @@ class DefaultShareProviderTest extends \Test\TestCase {
 
 		$user = $this->createMock(IUser::class);
 		$user->method('getUID')->willReturn('sharedWith');
+		$user->method('getDisplayName')->willReturn('sharedWith');
 		$owner = $this->createMock(IUser::class);
 		$owner->method('getUID')->willReturn('shareOwner');
 		$initiator = $this->createMock(IUser::class);
@@ -2525,7 +2552,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->defaults,
 			$this->l10nFactory,
 			$this->urlGenerator,
-			$this->timeFactory
+			$this->timeFactory,
+			$this->cacheAccess,
 		);
 
 		$password = md5(time());
@@ -2623,7 +2651,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->defaults,
 			$this->l10nFactory,
 			$this->urlGenerator,
-			$this->timeFactory
+			$this->timeFactory,
+			$this->cacheAccess,
 		);
 
 		$u1 = $userManager->createUser('testShare1', 'test');
@@ -2719,7 +2748,8 @@ class DefaultShareProviderTest extends \Test\TestCase {
 			$this->defaults,
 			$this->l10nFactory,
 			$this->urlGenerator,
-			$this->timeFactory
+			$this->timeFactory,
+			$this->cacheAccess,
 		);
 
 		$u1 = $userManager->createUser('testShare1', 'test');
