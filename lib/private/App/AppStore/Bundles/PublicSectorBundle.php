@@ -40,6 +40,7 @@ class PublicSectorBundle extends Bundle {
 			'forms',
 			'collectives',
 			'files_antivirus',
+		    'twofactor_nextcloud_notification',
 			'tables',
 			'officeonline',
 			'logreader',
