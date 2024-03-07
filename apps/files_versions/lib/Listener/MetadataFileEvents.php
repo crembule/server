@@ -23,7 +23,7 @@ declare(strict_types=1);
 namespace OCA\Files_Versions\Listener;
 
 use OC\Files\Node\Folder;
-use OCA\Files_Versions\Versions\IStoreMetadataBackend;
+use OCA\Files_Versions\Versions\IMetadataVersion;
 use OCA\Files_Versions\Versions\IVersionManager;
 use OCP\EventDispatcher\Event;
 use OCP\EventDispatcher\IEventListener;
@@ -31,28 +31,37 @@ use OCP\Files\Events\Node\NodeWrittenEvent;
 use OCP\Files\Node;
 use OCP\IUserSession;
 
+/** @template-implements IEventListener<NodeWrittenEvent> */
 class MetadataFileEvents implements IEventListener {
-
 	public function __construct(
 		private IVersionManager $versionManager,
 		private IUserSession $userSession,
 	){
 	}
 
+	/**
+	 * @abstract handles events from a nodes version being changed
+	 * @param Event $event the event that triggered this listener to activate
+	 */
 	public function handle(Event $event): void {
 		if ($event instanceof NodeWrittenEvent) {
 			$this->post_write_hook($event->getNode());
 		}
 	}
 
+	/**
+	 * @abstract handles the NodeWrittenEvent, and sets the metadata for the associated node
+	 * @param Node $node the node that is currently being written
+	 */
 	public function post_write_hook(Node $node): void {
-		// Do not handle folders
-		if ($node instanceof Folder || !$this->userSession->getUser()) {
+		// Do not handle folders or users that we cannot get metadata from
+		if ($node instanceof Folder || is_null($this->userSession->getUser())) {
 			return;
 		}
 		// check if our version manager supports setting the metadata
-		if ($this->versionManager instanceof IStoreMetadataBackend) {
-			$this->versionManager->setMetadata($node, $this->userSession);
+		if ($this->versionManager instanceof IMetadataVersion) {
+			$owner = $this->userSession->getUser()->getDisplayName();
+			$this->versionManager->setMetadataValue($node, "owner", $owner);
 		}
 	}
 }

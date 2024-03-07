@@ -26,6 +26,7 @@ declare(strict_types=1);
 namespace OCA\Files_Versions\Versions;
 
 use OCP\Files\File;
+use OCP\Files\Node;
 use OCP\Files\FileInfo;
 use OCP\Files\IRootFolder;
 use OCP\Files\Lock\ILock;
@@ -34,8 +35,9 @@ use OCP\Files\Lock\LockContext;
 use OCP\Files\Storage\IStorage;
 use OCP\IUser;
 use OCP\Lock\ManuallyLockedException;
+use OCP\IUserSession;
 
-class VersionManager implements IVersionManager, INameableVersionBackend, IDeletableVersionBackend, INeedSyncVersionBackend {
+class VersionManager implements IVersionManager, INameableVersionBackend, IDeletableVersionBackend, INeedSyncVersionBackend, IMetadataVersion {
 	/** @var (IVersionBackend[])[] */
 	private $backends = [];
 
@@ -157,6 +159,20 @@ class VersionManager implements IVersionManager, INameableVersionBackend, IDelet
 		$backend = $this->getBackendForStorage($file->getStorage());
 		if ($backend instanceof INeedSyncVersionBackend) {
 			$backend->deleteVersionsEntity($file);
+		}
+	}
+
+	public function setMetadataValue(Node $node, string $key, string $value): void {
+		$backend = $this->getBackendForStorage($node->getStorage());
+		if ($backend instanceof IMetadataVersion) {
+			$backend->setMetadataValue($node, $key, $value);
+		}
+	}
+
+	public function getMetadataValue(Node $node, string $key): ?string {
+		$backend = $this->getBackendForStorage($node->getStorage());
+		if ($backend instanceof IMetadataVersion) {
+			return $backend->getMetadataValue($node, $key);
 		}
 	}
 

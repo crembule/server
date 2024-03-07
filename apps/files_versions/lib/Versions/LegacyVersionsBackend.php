@@ -35,6 +35,7 @@ use OCA\Files_Versions\Db\VersionEntity;
 use OCA\Files_Versions\Db\VersionsMapper;
 use OCA\Files_Versions\Storage;
 use OCP\Files\File;
+use OCP\Files\Node;
 use OCP\Files\FileInfo;
 use OCP\Files\Folder;
 use OCP\Files\IMimeTypeLoader;
@@ -45,7 +46,7 @@ use OCP\IUser;
 use OCP\IUserManager;
 use OCP\IUserSession;
 
-class LegacyVersionsBackend implements IVersionBackend, INameableVersionBackend, IDeletableVersionBackend, INeedSyncVersionBackend {
+class LegacyVersionsBackend implements IVersionBackend, INameableVersionBackend, IDeletableVersionBackend, INeedSyncVersionBackend, IMetadataVersion {
 	private IRootFolder $rootFolder;
 	private IUserManager $userManager;
 	private VersionsMapper $versionsMapper;
@@ -311,5 +312,27 @@ class LegacyVersionsBackend implements IVersionBackend, INameableVersionBackend,
 		}
 
 		return ($sourceFile->getPermissions() & $permissions) === $permissions;
+	}
+
+	public function setMetadataValue(Node $node, string $key, string $value): void {
+		try {
+			$versionEntity = $this->versionsMapper->findVersionForFileId($node->getId(), $node->getMTime());
+		} catch (\InvalidArgumentException $e) { // means that we have not created the version
+			$versionEntity = new VersionEntity();
+		}
+		$otherValues = $versionEntity->getMetadata();
+		$otherValues[$key] = $value;
+		$versionEntity->setMetadata([json_encode($otherValues)]);
+		$this->versionsMapper->update($versionEntity);
+	}
+
+	public function getMetadataValue(Node $node, $key): ?string {
+		try {
+			$versionEntity = $this->versionsMapper->findVersionForFileId($node->getId(), $node->getMTime());
+			return $versionEntity->getMetadataValue($key);
+		} catch (\InvalidArgumentException $e) {
+			// we tried to find a version that doesn't exist
+			return null;
+		}
 	}
 }
