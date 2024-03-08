@@ -51,7 +51,7 @@ class PruneOutdatedSyncTokensJob extends TimedJob {
 	}
 
 	public function run($argument) {
-		$limit = max(1, (int) $this->config->getAppValue(Application::APP_ID, 'totalNumberOfSyncTokensToKeep', '1'));
+		$limit = max(1, (int) $this->config->getAppValue(Application::APP_ID, 'totalNumberOfSyncTokensToKeep', '10000'));
 		$retention = max(7, (int) $this->config->getAppValue(Application::APP_ID, 'syncTokensRetention', '60')) * 24 * 3600;
 
 		$prunedCalendarSyncTokens = $this->calDavBackend->pruneOutdatedSyncTokens($limit, $retention);
