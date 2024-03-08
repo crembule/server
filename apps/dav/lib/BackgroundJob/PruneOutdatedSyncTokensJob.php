@@ -51,10 +51,11 @@ class PruneOutdatedSyncTokensJob extends TimedJob {
 	}
 
 	public function run($argument) {
-		$limit = max(1, (int) $this->config->getAppValue(Application::APP_ID, 'totalNumberOfSyncTokensToKeep', '10000'));
+		$limit = max(1, (int) $this->config->getAppValue(Application::APP_ID, 'totalNumberOfSyncTokensToKeep', '1'));
+		$retention = max(7, (int) $this->config->getAppValue(Application::APP_ID, 'syncTokensRetention', '60')) * 24 * 3600;
 
-		$prunedCalendarSyncTokens = $this->calDavBackend->pruneOutdatedSyncTokens($limit);
-		$prunedAddressBookSyncTokens = $this->cardDavBackend->pruneOutdatedSyncTokens($limit);
+		$prunedCalendarSyncTokens = $this->calDavBackend->pruneOutdatedSyncTokens($limit, $retention);
+		$prunedAddressBookSyncTokens = $this->cardDavBackend->pruneOutdatedSyncTokens($limit, $retention);
 
 		$this->logger->info('Pruned {calendarSyncTokensNumber} calendar sync tokens and {addressBooksSyncTokensNumber} address book sync tokens', [
 			'calendarSyncTokensNumber' => $prunedCalendarSyncTokens,
