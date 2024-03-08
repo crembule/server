@@ -174,6 +174,7 @@ class VersionManager implements IVersionManager, INameableVersionBackend, IDelet
 		if ($backend instanceof IMetadataVersion) {
 			return $backend->getMetadataValue($node, $key);
 		}
+		return null;
 	}
 
 	/**

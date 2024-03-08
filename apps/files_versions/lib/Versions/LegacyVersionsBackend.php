@@ -315,6 +315,10 @@ class LegacyVersionsBackend implements IVersionBackend, INameableVersionBackend,
 	}
 
 	public function setMetadataValue(Node $node, string $key, string $value): void {
+		if (!($node instanceof File)) {
+			return;
+		}
+
 		try {
 			$versionEntity = $this->versionsMapper->findVersionForFileId($node->getId(), $node->getMTime());
 		} catch (\InvalidArgumentException $e) { // means that we have not created the version

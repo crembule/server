@@ -27,10 +27,12 @@ declare(strict_types=1);
 namespace OCA\Files_Versions\Sabre;
 
 use OCA\Files_Versions\Versions\IDeletableVersionBackend;
+use OCA\Files_Versions\Versions\IMetadataVersion;
 use OCA\Files_Versions\Versions\INameableVersion;
 use OCA\Files_Versions\Versions\INameableVersionBackend;
 use OCA\Files_Versions\Versions\IVersion;
 use OCA\Files_Versions\Versions\IVersionManager;
+use OCP\Files\Node;
 use OCP\Files\NotFoundException;
 use Sabre\DAV\Exception\Forbidden;
 use Sabre\DAV\Exception\NotFound;
@@ -107,6 +109,27 @@ class VersionFile implements IFile {
 		} else {
 			return false;
 		}
+	}
+
+	public function getMetadataOwner(): ?string {
+		$source = $this->version->getSourceFile();
+		if ($this->versionManager instanceof IMetadataVersion && $source instanceof Node) {
+			return $this->versionManager->getMetadataValue($source, "owner") ?? '';
+		}
+		return null;
+	}
+
+	/**
+	 * @abstract sets the owner in the metadata column
+	 * @param string $owner the value that will be set for the owner in the metadata column
+	 */
+	public function setMetadataOwner(string $ownerValue): bool {
+		$source = $this->version->getSourceFile();
+		if ($this->versionManager instanceof IMetadataVersion && $source instanceof Node) {
+			$this->versionManager->setMetadataValue($source, "owner", $ownerValue);
+			return true;
+		}
+		return false;
 	}
 
 	public function getLastModified(): int {

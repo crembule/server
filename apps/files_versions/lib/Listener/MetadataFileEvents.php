@@ -60,7 +60,7 @@ class MetadataFileEvents implements IEventListener {
 		}
 		// check if our version manager supports setting the metadata
 		if ($this->versionManager instanceof IMetadataVersion) {
-			$owner = $this->userSession->getUser()->getDisplayName();
+			$owner = $this->userSession->getUser()->getDisplayName() ?? '';
 			$this->versionManager->setMetadataValue($node, "owner", $owner);
 		}
 	}
