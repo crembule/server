@@ -123,8 +123,8 @@ class Application extends App {
 			);
 			$event->addMissingIndex(
 				'filecache',
-				'fs_parent',
-				['parent']
+				'fs_parent_name_hash',
+				['parent', 'name']
 			);
 
 			$event->addMissingIndex(
